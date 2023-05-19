@@ -3,8 +3,13 @@
 * 绑定着色器-》绑定顶点缓冲区-》设置顶点布局-》绑定索引缓冲区-》发出绘制调用
 */
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include "GL/glew.h"
+#include "GLFW/glfw3.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 
 #include <iostream>
 #include <fstream>
@@ -17,6 +22,8 @@
 #include "VertexArray.h"
 #include "VertexBufferLayout.h"
 #include "shader.h"
+#include "Texture.h"
+
 
 /*
 struct ShaderProgramSource
@@ -116,7 +123,7 @@ int main(void)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(960, 540, "Hello World", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -143,10 +150,10 @@ int main(void)
     {
         //坐标数据
         float positions[] = {
-            -0.5f, -0.5f, // 0
-             0.5f, -0.5f, // 1
-             0.5f,  0.5f, // 2
-            -0.5f,  0.5f, // 3
+            100.0f, 100.0f, 0.0f, 0.0f, // 0
+            200.0f, 100.0f, 1.0f, 0.0f, // 1
+            200.0f, 200.0f, 1.0f, 1.0f,// 2
+            100.0f, 200.0f, 0.0f, 1.0f,// 3
         };
 
         unsigned int indices[] = {
@@ -162,11 +169,11 @@ int main(void)
         */
         
         VertexArray va;
-        VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+        VertexBuffer vb(positions, 4 * 4 * sizeof(float));
 
         VertexBufferLayout layout;
         layout.Push<float>(2);//GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
-        
+        layout.Push<float>(2);
         va.AddBuffer(vb, layout);
         /*以下抽象为类
         * unsigned int buffer;
@@ -193,6 +200,9 @@ int main(void)
         GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW));
         */
 
+        glm::mat4 proj = glm::ortho(0.0f,960.0f, 0.0f, 540.0f, -1.0f, 1.0f);
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-100, 0, 0));
+
         Shader shader("res/shaders/Basic.shader");
         shader.Bind();
         shader.SetUniform4f("u_Color", 0.8f, 0.3f, 0.8f, 1.0f);
@@ -209,7 +219,12 @@ int main(void)
         ASSERT(location != -1);
         GLCall(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
         */
+
+        Texture texture("res/textures/ChernoLogo.png");
+        texture.Bind();
+        shader.SetUniform1i("u_Texture", 0);
         
+
 
         //解绑
         va.Unbind();
@@ -219,6 +234,15 @@ int main(void)
 
         Renderer renderer;
 
+        
+
+        ImGui::CreateContext();
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui::StyleColorsDark();
+        ImGui_ImplOpenGL3_Init("#version 130");
+
+        
+        glm::vec3 translation(200, 200, 0);
         float r = 0.0f;
         float increment = 0.05f;
         //glBindBuffer(GL_ARRAY_BUFFER, 0);未绑定数据，类似于没有选择响应图层所以无法绘制
@@ -229,8 +253,12 @@ int main(void)
             //glClear(GL_COLOR_BUFFER_BIT);
             renderer.Clear();
 
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
+            glm::mat4 mvp = proj * view * model;
+            
             shader.Bind();
             shader.SetUniform4f("u_Color", r, 0.3f, 0.8f, 1.0f);
+            shader.SetUniformMat4f("u_MVP", mvp);
             /*
             //渲染时再绑定
             GLCall(glUseProgram(shader));
@@ -255,6 +283,19 @@ int main(void)
                 increment = 0.05f;
             r += increment;
 
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            {
+                                        
+
+                ImGui::Begin("Hello, world!");
+                ImGui::SliderFloat3("Translation", &translation.x, 0.0f, 960.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+                
+                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                ImGui::End();
+            }
             //清空其他函数的错误
             //GLClearError();
             //绘制Array中的图形
@@ -267,6 +308,8 @@ int main(void)
             renderer.Draw(va, ib, shader);
             GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
 
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
             /* Swap front and back buffers */
             glfwSwapBuffers(window);
@@ -276,6 +319,9 @@ int main(void)
         }
 
     }
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     glfwTerminate();
     return 0;
 }

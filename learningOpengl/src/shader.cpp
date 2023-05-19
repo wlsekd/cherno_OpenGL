@@ -1,4 +1,4 @@
-#include "Shader.h"
+#include "shader.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -109,20 +109,17 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
 
 unsigned int Shader::CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 {
-    unsigned int program;
-    GLCall(program = glCreateProgram()); /* 创建程序 */
+    unsigned int program = glCreateProgram();
     unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
     unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
-    /* 将着色器附加到程序上 */
-    GLCall(glAttachShader(program, vs));
-    GLCall(glAttachShader(program, fs));
-    GLCall(glLinkProgram(program)); /* 链接程序 */
-    GLCall(glValidateProgram(program)); /* 验证 */
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+    glValidateProgram(program);
 
-    /* 删除着色器 */
-    GLCall(glDeleteShader(vs));
-    GLCall(glDeleteShader(fs));
+    glDeleteShader(vs);
+    glDeleteShader(fs);
 
     return program;
 }
